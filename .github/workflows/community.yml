@@ -1,0 +1,50 @@
+name: Daily community snapshot
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+    inputs:
+      live_minutes:
+        description: "Bounded public round collector (0 off, 1-60 minutes). Pages publishes after it finishes."
+        type: number
+        default: 0
+
+concurrency:
+  group: community-pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Prepare attributed public snapshots
+        env:
+          TOPDECK_API_KEY: ${{ secrets.TOPDECK_API_KEY }}
+          LIVE_MINUTES: ${{ inputs.live_minutes || 0 }}
+          PUBLISHED_BASE: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+        run: >-
+          python community_pipeline/build_feed.py
+          --config community_pipeline/sources.json
+          --out out/community
+          --published-base "$PUBLISHED_BASE"
+          --live-minutes "$LIVE_MINUTES"
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+      - id: deploy
+        uses: actions/deploy-pages@v4

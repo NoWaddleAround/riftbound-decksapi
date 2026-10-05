@@ -1,0 +1,10 @@
+{
+  "topdeck": {
+    "formats": ["Constructed"],
+    "days_back": 14,
+    "tracked_tournaments": []
+  },
+  "sources": [],
+  "events": [],
+  "decks": []
+}
