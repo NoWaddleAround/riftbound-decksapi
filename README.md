@@ -14,7 +14,7 @@ Optional, free offline packs for the Android app. This repository uses the docum
 1. Keep the repository public if using free public GitHub Actions runners and free Pages.
 2. Set **Settings → Pages → Source → GitHub Actions**.
 3. Set the repository Actions secret `TOPDECK_API_KEY` to the developer key. Never put it in source, URLs, the Android app, or JSON packs. The supplied workflow passes it only as a runner environment variable.
-4. Run **Daily community snapshot** manually once. The normal schedule is 04:17 UTC daily. Schedule timing is inexact, and inactive public repository schedules can be disabled after 60 days. See [GitHub schedule documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
+4. Run **Community snapshots** manually once. The schedule uses GitHub's lowest supported interval, every five minutes. Completed deck discovery still runs only once per day; tracked ongoing public rounds get one poll per scheduled run. With no tracked events and a current daily archive, a run fetches only the small manifest and exits unchanged. Schedule timing is inexact, and inactive public repository schedules can be disabled after 60 days. See [GitHub schedule documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
 5. The manifest becomes `https://nowaddlearound.github.io/riftbound-decksapi/community/manifest.json`. Prices remain in the independent `riftbound-prices` repository and are unaffected.
 
 The first successful run may contain only source links if a public deck's export is a website URL. This is an honest availability limit: public access to a linked website is not permission to crawl it. No sample or fabricated deck/event data is published.
@@ -23,7 +23,7 @@ The first successful run may contain only source links if a public deck's export
 
 `sources.json` starts with completed Riftbound Constructed events from the last 14 days. Supported TopDeck formats are `Constructed`, `Limited`, `Sealed`, `2v2`, and `Free-for-All`. A request is made per selected format. The lookback can be 1–90 days.
 
-`topdeck.tracked_tournaments` accepts up to 20 **real TopDeck tournament IDs**. Their public metadata is fetched separately. Upcoming events cannot be discovered by the completed-event search. Get IDs from an actual TopDeck event URL; a Zero/UVS event ID is not necessarily a TopDeck ID.
+`topdeck.tracked_tournaments` accepts up to six **real TopDeck tournament IDs** so every scheduled job remains bounded. Their public metadata is fetched separately at most every 15 minutes; ongoing public round tables are polled once per five-minute run. Upcoming events cannot be discovered by the completed-event search. Get IDs from an actual TopDeck event URL; a Zero/UVS event ID is not necessarily a TopDeck ID.
 
 Manually curated calendars and authorized deck exports can be added through `sources`, `events`, and `decks`. Record source attribution and the original HTTPS URL. For deck records, `redistribution_permission` must document the actual author/operator grant; a nonempty value is an operator assertion, not an automatic permission check. Do not add scraped decks, paywalled exports, site comments, or graphics.
 
@@ -48,19 +48,19 @@ Calendar event fields:
 
 This example is a schema illustration only and is not included in the feed. Event categories are data, allowing official names to change between seasons.
 
-## Collection cadence and the 10-second limit
+## Five-minute collection cadence
 
 **Every TopDeck request shares one budget:** at least 10.05 seconds between calls and at most six calls per rolling 60.05 seconds. Discovery, event metadata, round reads, and retries all count. `429` and transient server errors use bounded backoff/`Retry-After`; no attempt bypasses the shared gate. API failures retain last-good records and become public source warnings.
 
-The manual `live_minutes` input accepts 0 (off) or 1–60. For configured ongoing Riftbound events, it collects `/rounds/latest` in rotation during that bounded period. Six calls per minute across three events means each event is sampled about every 30 seconds. Only public table names, players' public display names, results, and status are retained. No attendee contacts, account metadata, full profiles, win-rate matrix, or derived tier list is retained.
+Scheduled runs are finite: at most one round read per configured ongoing event, with daily completed-deck discovery and a 15-minute metadata interval. Unchanged runs skip Pages deployment. The manual `force` option refreshes completed decks before their daily interval. The optional manual `live_minutes` input accepts 0 (off) or 1–60 and samples ongoing events in rotation during that bounded period; it is unnecessary for the normal five-minute schedule. Only public table names, players' public display names, results, and status are retained. No attendee contacts, account metadata, full profiles, win-rate matrix, or derived tier list is retained.
 
-**GitHub Pages publishes only after the run finishes.** A ten-second source polling loop does not make Pages a ten-second live relay. Actions scheduling has a five-minute minimum and may be delayed or dropped. Repeated deploys every ten seconds are unsupported. The Android app uses daily/manual cached reads and labels results as snapshots.
+**GitHub Pages publishes only after the run finishes.** The five-minute cron is the lowest supported schedule, not an uptime/freshness guarantee: jobs may be delayed or dropped, and collection/deployment takes additional time. Repeated deploys every ten seconds are unsupported. The Android app reads cached data immediately, checks decks daily, and checks every five minutes only while Events is visible after opt-in. Manual refresh is also available. Records distinguish content update time (`updated_at`) from actual source fetch time (`fetched_at`).
 
-To expose shared ten-second updates, a separate continuously running HTTPS service is necessary. It should hold the key, run one shared collector, return only sanitized cached data, and gate all requests through the same budget. Client refreshes must never fan out to TopDeck. No such service is deployed or secretly assumed here; its hosting, provider retention rules, TLS, uptime, and operating costs require a concrete host choice. Until then, users can open the source event page for live coverage.
+No separate relay is needed for the agreed five-minute snapshots. Users can open the original event page for live coverage. App clients never contact TopDeck, so their number does not multiply authenticated API requests.
 
 ## Format and trust boundary
 
-Schema version is `1`. Manifest fields are `generated_at`, `sources`, `packs`, `source_state`, and `warnings`.
+Schema version is `1`. Manifest fields are `generated_at`, `sources`, `packs`, `source_state`, `warnings`, and a configuration fingerprint. State carries source fetch times and the last six request times so the budget persists between successive serial jobs.
 
 Each pack has `schema_version`, `generated_at`, `sources`, `decks`, and `events`. Every entry references a declared source. All source/coverage URLs are HTTPS. Canonical IDs retain the source namespace (`topdeck:TID` and `topdeck:TID:playerID`); no numeric event IDs are treated as globally unique. Code/text import is validated against the app catalog and unknown cards need an explicit incomplete-copy choice.
 

@@ -1,14 +1,18 @@
-name: Daily community snapshot
+name: Community snapshots
 
 on:
   schedule:
-    - cron: "17 4 * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
     inputs:
       live_minutes:
         description: "Bounded public round collector (0 off, 1-60 minutes). Pages publishes after it finishes."
         type: number
         default: 0
+      force:
+        description: "Refresh completed deck discovery before its daily interval"
+        type: boolean
+        default: false
 
 concurrency:
   group: community-pages
@@ -32,19 +36,32 @@ jobs:
         with:
           python-version: "3.12"
       - name: Prepare attributed public snapshots
+        id: collect
         env:
           TOPDECK_API_KEY: ${{ secrets.TOPDECK_API_KEY }}
           LIVE_MINUTES: ${{ inputs.live_minutes || 0 }}
           PUBLISHED_BASE: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
-        run: >-
-          python community_pipeline/build_feed.py
-          --config community_pipeline/sources.json
-          --out out/community
-          --published-base "$PUBLISHED_BASE"
-          --live-minutes "$LIVE_MINUTES"
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+          FORCE_DISCOVERY: ${{ inputs.force || false }}
+        run: |
+          force_arg=()
+          if [ "$FORCE_DISCOVERY" = "true" ]; then force_arg+=(--force); fi
+          set +e
+          python community_pipeline/build_feed.py --config community_pipeline/sources.json --out out/community --published-base "$PUBLISHED_BASE" --live-minutes "$LIVE_MINUTES" "${force_arg[@]}"
+          code=$?
+          set -e
+          if [ "$code" -eq 100 ]; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          elif [ "$code" -eq 0 ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            exit "$code"
+          fi
+      - if: steps.collect.outputs.publish == 'true'
+        uses: actions/configure-pages@v5
+      - if: steps.collect.outputs.publish == 'true'
+        uses: actions/upload-pages-artifact@v3
         with:
           path: out
       - id: deploy
+        if: steps.collect.outputs.publish == 'true'
         uses: actions/deploy-pages@v4
