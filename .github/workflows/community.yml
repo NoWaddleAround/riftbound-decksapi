@@ -35,6 +35,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Check local schema, privacy and request budget
+        run: python -m unittest discover -s community_pipeline -p test_feed.py
       - name: Prepare attributed public snapshots
         id: collect
         env:

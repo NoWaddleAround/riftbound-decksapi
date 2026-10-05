@@ -8,6 +8,7 @@ Optional, free offline packs for the Android app. This repository uses the docum
 | --- | --- |
 | `community_pipeline/build_feed.py` | `community_pipeline/build_feed.py` |
 | `community_pipeline/sources.json` | `community_pipeline/sources.json` |
+| `community_pipeline/test_feed.py` | `community_pipeline/test_feed.py` |
 | `community_pipeline/community.yml` | `.github/workflows/community.yml` |
 | `community_pipeline/README.md` | `README.md` |
 
@@ -76,4 +77,8 @@ The previous published manifest/packs are recovered only from the configured Git
 - Record IDs can be excluded via `exclude_deck_ids`/`exclude_event_ids` in config when a source author requests removal. These exclusions apply before publishing. Old downloaded snapshots can remain offline until refreshed/cleared; imported personal copies/notes are separate user records. Agree on provider removal/retention behavior before promising permanent archival.
 - To stop publishing, disable the workflow in GitHub Actions. Users can independently turn off updates or clear community downloads without affecting their collection, saved personal decks, bookmarks or notes.
 
-No external libraries are required. No test/build commands are run by the deployment workflow; it validates source/output while collecting and publishing the authorized data.
+No external libraries are required. Six local fixture checks cover schema/hashes/attribution, strict export shapes, contact-field omission, distinct fetched/update times, request/retry budget, and last-good recovery. Run them with `python -m unittest discover -s community_pipeline -p test_feed.py`; the workflow runs the same small checks before collection. These tests make no network calls and use no real credentials. No Android build is performed here.
+
+## First published corpus
+
+The first successful 90-day collection on 5 October 2026 returned 112 real completed events and 1,000 retained deck references (the configured cap). Inspection of the published packs found **zero importable text lists and zero deck codes**; all references link to the original TopDeck event and retain the publicly provided leader/byline. The app displays source links and does not invent missing card contents. Import preview/save is available for authorized future exports and user-imported pack files, not for these source-only references. No ongoing event IDs are configured yet, so current public results are empty until a real TopDeck event is explicitly tracked.
