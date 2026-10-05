@@ -55,6 +55,19 @@ class FeedChecks(unittest.TestCase):
         self.assertEqual(event["fetched_at"], STAMP)
         self.assertNotIn("PRIVATE", body.decode())
 
+    def test_legend_and_event_packs_keep_original_records(self):
+        event = feed.event_from_info({"name": "Fixture", "format": "Constructed", "startDate": 1780000000}, "fixture", STAMP, {}, True)
+        deck = feed.deck_from_player({"id": "player", "name": "Public", "leader": "Ahri", "decklist": "https://example.org/deck"}, "fixture", "Constructed", STAMP, {})
+        feed.write_feed(self.root / "community", [feed.TOPDECK], [deck], [event], STAMP, {}, [], "fixture")
+        manifest = json.loads((self.root / "community/manifest.json").read_text())
+        self.assertLessEqual(len(manifest["packs"]), 140)
+        for prefix in ("legend-", "event-"):
+            pack = next(pack for pack in manifest["packs"] if pack["id"].startswith(prefix))
+            body = (self.root / "community" / pack["path"]).read_bytes()
+            self.assertEqual(pack["sha256"], hashlib.sha256(body).hexdigest())
+            self.assertEqual(json.loads(body)["decks"], [deck])
+            self.assertEqual(json.loads(body)["decks"][0]["raw_text"], "")
+
     def test_only_supported_deck_shapes(self):
         self.assertEqual(feed.structured_text({"Legend": {"Fixture Legend": 1}, "MainDeck": {"Fixture Unit": 3}}),
                          "Legend\n1 Fixture Legend\n\nMainDeck\n3 Fixture Unit")

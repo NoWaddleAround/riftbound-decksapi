@@ -379,6 +379,17 @@ def write_feed(out, sources, decks, events, collected_at, state, warnings, confi
     # Native app reads only selected packs. Event-only browsing does not download deck lists.
     for start in range(0, len(decks), 100):
         save("decks-" + str(start // 100 + 1), "Community decks " + str(start // 100 + 1), "decks", decks[start:start + 100], [])
+    # Keep existing batch IDs and offer smaller, directly useful legend/event selections.
+    legends = sorted({text(deck.get("legend")) for deck in decks if text(deck.get("legend"))})[:60]
+    for legend in legends:
+        selected = [deck for deck in decks if text(deck.get("legend")) == legend]
+        pack_id = "legend-" + hashlib.sha256(legend.encode("utf-8")).hexdigest()[:20]
+        event_ids = {deck.get("event_id") for deck in selected}
+        save(pack_id, legend, "decks", selected, [event for event in events if event["id"] in event_ids])
+    for event in sorted(events, key=lambda entry: entry.get("start_at", ""), reverse=True)[:max(0, 140 - len(packs))]:
+        pack_id = "event-" + hashlib.sha256(event["id"].encode("utf-8")).hexdigest()[:20]
+        selected = [deck for deck in decks if deck.get("event_id") == event["id"]]
+        save(pack_id, event["name"], "event", selected, [event])
     manifest = {"schema_version": SCHEMA, "generated_at": collected_at, "sources": sources,
                 "packs": packs, "source_state": state, "warnings": warnings, "config_hash": config_hash}
     (out / "manifest.json").write_bytes(encoded(manifest))
@@ -402,7 +413,7 @@ def main():
         parser.error("live-minutes must be between 0 and 60")
     config_bytes = args.config.read_bytes()
     config = json.loads(config_bytes)
-    config_hash = hashlib.sha256(config_bytes).hexdigest()
+    config_hash = hashlib.sha256(b"pack-layout-v2\n" + config_bytes).hexdigest()
     formats = config.get("topdeck", {}).get("formats", ["Constructed"])
     if len(formats) > 5 or any(f not in FORMATS for f in formats):
         raise ValueError("Use documented Riftbound formats")

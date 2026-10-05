@@ -69,15 +69,21 @@ Pack descriptors include a relative path, exact byte size and SHA-256 hash. The 
 
 The previous published manifest/packs are recovered only from the configured GitHub Pages origin, without redirects, with byte/hash limits. A failure recovering an existing feed stops publication. Source API failure keeps the old records; it never invents a successful update. The feed holds at most 1,000 decks and 1,000 events. No raw authenticated responses or keys are written to disk/artifacts. Public response parsing accepts only explicitly supported section/count shapes; unknown shapes remain original-source links.
 
+Additional selections contain decks for an individual legend and records for specific recent
+events. Existing bulk pack IDs remain compatible. These selections use the same verified
+source records; they do not turn source-only references into full lists. The publisher caps
+the manifest at 140 packs, each file at 2 MB and the combined output at 20 MB.
+
 ## Maintenance and removal
 
-- Review source permissions/retention terms and [Riot's Riftbound developer policy](https://developer.riotgames.com/docs/riftbound) for this exact app. API integration permission should not be extrapolated to unrelated website content or public meta analytics.
+- Review source permissions/retention terms and [Riot's Riftbound developer policy](https://developer.riotgames.com/policies/riftbound) for this exact app. The app is registered and awaiting review as of 5 October 2026. No Riot API is called by this pipeline. A Riot key alone does not provide tournament decklists or authorize a new public integration.
+- Do not add aggregate deck/card play rates, win rates, matchup percentage matrices or inferred skill rankings. The dedicated Riftbound policy prohibits publishing or retaining metagame-defining data. Keep tournament decklist browsing and existing private match summaries in the app's review scope rather than assuming an exception. Do not add undocumented UVS/Zero endpoints or crawl deck sites. Additional full lists require an authorized export/feed and applicable Riot review.
 - GitHub Pages is static hosting with [size/bandwidth limits](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits). Keep images out of packs, and watch aggregate downloads before promising unlimited scale.
 - An invalid/expired key or provider shape change appears in the manifest warnings. The app keeps last-good cache and original source links.
 - Record IDs can be excluded via `exclude_deck_ids`/`exclude_event_ids` in config when a source author requests removal. These exclusions apply before publishing. Old downloaded snapshots can remain offline until refreshed/cleared; imported personal copies/notes are separate user records. Agree on provider removal/retention behavior before promising permanent archival.
 - To stop publishing, disable the workflow in GitHub Actions. Users can independently turn off updates or clear community downloads without affecting their collection, saved personal decks, bookmarks or notes.
 
-No external libraries are required. Six local fixture checks cover schema/hashes/attribution, strict export shapes, contact-field omission, distinct fetched/update times, request/retry budget, and last-good recovery. Run them with `python -m unittest discover -s community_pipeline -p test_feed.py`; the workflow runs the same small checks before collection. These tests make no network calls and use no real credentials. No Android build is performed here.
+No external libraries are required. Seven local fixture checks cover schema/hashes/attribution, legend/event packs, strict export shapes, contact-field omission, distinct fetched/update times, request/retry budget, and last-good recovery. Run them with `python -m unittest discover -s community_pipeline -p test_feed.py`; the workflow runs the same small checks before collection. These tests make no network calls and use no real credentials. No Android build is performed here.
 
 ## First published corpus
 
