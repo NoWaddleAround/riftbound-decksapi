@@ -277,7 +277,7 @@ def deck_from_player(player, tid, fmt, collected_at, previous):
     if isinstance(list_value, str) and list_value.strip().startswith("https://"):
         link = https(list_value)
     # A public URL is a link, never permission to crawl its host.
-    if not raw and not code and not link:
+    if not raw and not code and not link and not player.get("leader"):
         return None
     player_id = text(player.get("id"), 100)
     if not player_id or not ID.fullmatch(player_id):
@@ -440,6 +440,7 @@ def main():
                     "columns": ["name", "id", "decklist"], "rounds": False})
                 if not isinstance(response, list):
                     raise ValueError("Unexpected bulk tournament response")
+                shapes = collections.Counter()
                 for tournament in response[:200]:
                     if tournament.get("game") != "Riftbound":
                         continue
@@ -447,13 +448,21 @@ def main():
                     event = event_from_info(tournament, tid, collected_at, events, complete=True)
                     events[event["id"]] = event
                     for player in tournament.get("standings", [])[:1000]:
+                        shapes["players"] += 1
+                        shapes["decklist:" + type(player.get("decklist")).__name__] += 1
+                        shapes["deckObj:" + type(player.get("deckObj")).__name__] += 1
                         try:
                             deck = deck_from_player(player, tid, fmt, collected_at, decks)
                             if deck:
                                 decks[deck["id"]] = deck
+                                shapes["supported_exports" if deck["raw_text"] or deck["deck_code"] else "source_links"] += 1
                         except (ValueError, TypeError, KeyError):
                             continue
                 source_state["topdeck:" + fmt] = collected_at
+                # Shape/count diagnostics only; never raw responses, player values or headers.
+                print("TopDeck", fmt, "public export availability:", json.dumps(dict(shapes), sort_keys=True))
+                if len(response) > 200:
+                    warnings.append("The configured TopDeck query returned more than 200 events; this bounded feed includes the first 200.")
             except (OSError, RuntimeError, ValueError, KeyError) as error:
                 warnings.append("TopDeck " + fmt + " could not update; last-good records were kept (" + type(error).__name__ + ").")
         live_ids = []

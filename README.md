@@ -21,7 +21,7 @@ The first successful run may contain only source links if a public deck's export
 
 ## Configure sources
 
-`sources.json` starts with completed Riftbound Constructed events from the last 14 days. Supported TopDeck formats are `Constructed`, `Limited`, `Sealed`, `2v2`, and `Free-for-All`. A request is made per selected format. The lookback can be 1–90 days.
+`sources.json` starts with completed Riftbound Constructed events from the last 90 days, queried only once daily. Supported TopDeck formats are `Constructed`, `Limited`, `Sealed`, `2v2`, and `Free-for-All`. A request is made per selected format. The lookback can be 1–90 days.
 
 `topdeck.tracked_tournaments` accepts up to six **real TopDeck tournament IDs** so every scheduled job remains bounded. Their public metadata is fetched separately at most every 15 minutes; ongoing public round tables are polled once per five-minute run. Upcoming events cannot be discovered by the completed-event search. Get IDs from an actual TopDeck event URL; a Zero/UVS event ID is not necessarily a TopDeck ID.
 

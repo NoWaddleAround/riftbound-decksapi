@@ -1,7 +1,7 @@
 {
   "topdeck": {
     "formats": ["Constructed"],
-    "days_back": 14,
+    "days_back": 90,
     "tracked_tournaments": []
   },
   "sources": [],
